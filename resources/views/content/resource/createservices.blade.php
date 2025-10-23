@@ -788,7 +788,7 @@ function populateExtraServ(extras) {
                 console.log("Fetch")
                 $.ajax({
                     url: "{{ route('admin.resource-getagents') }}",
-                    type: 'GET', 
+                    type: 'GET',
                     success: function (response) {
                         agents_data = response
                         populateAg(response);
@@ -812,15 +812,24 @@ function populateExtraServ(extras) {
 
              agents.forEach(function(agent) {
              var agentHtml = `
-             <div class="col-md-12 mb-md-0 mb-2">
-                <div class="form-check custom-option custom-option-basic">
-                    <label class="form-check-label custom-option-content" for="customCheck_${agent.id}">
-                        <input class="form-check-input" type="checkbox" name="service[offer][${agent.id}]" id="customCheck_${agent.id}" checked />
-                        <span class="custom-option-header">
-                            <img src="${agent.avatar ? agent.avatar : '{{ asset('assets/img/avatar.png') }}'}" class="w-px-30 border-50 mr-2" />
-                            <span class="h6 mb-0 agent-name">${agent.first_name + ' ' + agent.last_name }</span>
-                        </span>
-                    </label>
+             <div class="col-md-12 mb-md-0 mb-3">
+                <div class="row align-items-center gy-2">
+                    <div class="col-lg-7">
+                        <div class="form-check custom-option custom-option-basic">
+                            <label class="form-check-label custom-option-content" for="customCheck_${agent.id}">
+                                <input class="form-check-input agent-offer-toggle" data-agent-id="${agent.id}" type="checkbox" name="service[offer][${agent.id}]" id="customCheck_${agent.id}" checked />
+                                <span class="custom-option-header">
+                                    <img src="${agent.avatar ? agent.avatar : '{{ asset('assets/img/avatar.png') }}'}" class="w-px-30 border-50 mr-2" />
+                                    <span class="h6 mb-0 agent-name">${agent.first_name + ' ' + agent.last_name }</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <label class="form-label mb-1" for="custom_price_${agent.id}">Custom Price</label>
+                        <input type="number" min="0" step="0.01" class="form-control agent-custom-price" data-agent-price="${agent.id}" name="service[custom_price][${agent.id}]" id="custom_price_${agent.id}" placeholder="Leave blank to use service price" />
+                        <small class="text-muted">Leave blank to inherit the service price.</small>
+                    </div>
                 </div>
              </div>
           `;
@@ -866,6 +875,17 @@ function populateExtraServ(extras) {
      // Refresh selectpicker to show new options (if using Bootstrap selectpicker)
       $('.selectpicker-cat').selectpicker('refresh');
     }
+
+    $(document).on('change', '.agent-offer-toggle', function() {
+        const agentId = $(this).data('agent-id');
+        const priceInput = $(`input[data-agent-price="${agentId}"]`);
+
+        if ($(this).is(':checked')) {
+            priceInput.prop('disabled', false);
+        } else {
+            priceInput.prop('disabled', true).val('');
+        }
+    });
 
            
         $('.custom-schedule-wrapper').hide();
@@ -921,8 +941,14 @@ function populateExtraServ(extras) {
         const visibility = $('select[name="visibility"]').val();
         const override_default_booking_status = $('select[name="override_default_booking_status"]').val();
         servicedata['short_description'] =  $('input[name="short_description"]').val();
+        const customPrices = {};
         agents_data.forEach(element => {
             servicedata['offer'][element.id] = $(`input[name="service[offer][${element.id}]"]`).prop('checked');
+            const rawPrice = $(`input[name="service[custom_price][${element.id}]"]`).val();
+
+            if (rawPrice && rawPrice.trim() !== '') {
+                customPrices[element.id] = rawPrice.trim();
+            }
         });
        
         servicedata['schedule']['status'] = $('input[name="service[schedule][status]"]').prop('checked');
@@ -991,7 +1017,8 @@ function populateExtraServ(extras) {
                 capacity_max: capacity_max ? capacity_max : null,
                 status: status,
                 visibility: visibility,
-                override_default_booking_status: override_default_booking_status ? override_default_booking_status : null
+                override_default_booking_status: override_default_booking_status ? override_default_booking_status : null,
+                custom_prices: JSON.stringify(customPrices)
             },
             success: function() {
                 console.log('success');

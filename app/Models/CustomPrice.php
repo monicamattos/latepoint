@@ -19,4 +19,23 @@ class CustomPrice extends Model
         'is_deposit_required',
         'deposit_amount',
     ];
+
+    protected $casts = [
+        'is_price_variable' => 'boolean',
+        'is_deposit_required' => 'boolean',
+        'price_min' => 'decimal:4',
+        'price_max' => 'decimal:4',
+        'charge_amount' => 'decimal:4',
+        'deposit_amount' => 'decimal:4',
+    ];
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
+    }
 }

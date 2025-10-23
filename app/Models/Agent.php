@@ -26,4 +26,17 @@ class Agent extends Model
         'extra_emails',
         'extra_phones',
     ];
+
+    public function customPrices()
+    {
+        return $this->hasMany(CustomPrice::class);
+    }
+
+    public function customPriceForService(int $serviceId, int $locationId = 0)
+    {
+        return $this->customPrices()
+            ->where('service_id', $serviceId)
+            ->where('location_id', $locationId)
+            ->value('charge_amount');
+    }
 }

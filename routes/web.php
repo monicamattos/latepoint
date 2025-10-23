@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 
 use App\Http\Controllers\Language\LanguageController;
+use App\Http\Controllers\BookingController;
 
 
 use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController;
@@ -46,6 +47,7 @@ use App\Http\Controllers\Admin\Settings\Processes\ActivityLog;
 use App\Http\Controllers\Admin\Settings\Processes\Processes;
 use App\Http\Controllers\Admin\Settings\Processes\ScheduledJobs;
 use App\Http\Controllers\Admin\Settings\FormFields;
+use App\Http\Controllers\Admin\Settings\PlansController;
 
 
 use App\Http\Controllers\Agent\Auth\agent_AuthenticatedSessionController;
@@ -76,6 +78,8 @@ use Illuminate\Support\Facades\Auth;
 */
 
 Route::get('/', [Home::class, 'index'])->name('landing');
+
+Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
 
 Route::get('login', [CustomerLogin::class, 'login'])->name('login');
 Route::get('agentLogin', [agent_Login::class, 'login'])->name('agentLogin');
@@ -226,10 +230,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 
 
-        Route::get('/settings/roles', [Roles::class, 'index'])->name('settings-roles');
-        Route::post('/settings/storeroles', [Roles::class, 'store'])->name('settings-storeroles');
-        Route::post('/settings/updateroles/{id}', [Roles::class, 'update'])->name('settings-updateroles');
-        Route::get('/settings/deleteroles/{id}', [Roles::class, 'destroy']);
+        Route::get('/settings/roles', [Roles::class, 'index'])->middleware('plan.feature:advanced_roles')->name('settings-roles');
+        Route::post('/settings/storeroles', [Roles::class, 'store'])->middleware('plan.feature:advanced_roles')->name('settings-storeroles');
+        Route::post('/settings/updateroles/{id}', [Roles::class, 'update'])->middleware('plan.feature:advanced_roles')->name('settings-updateroles');
+        Route::get('/settings/deleteroles/{id}', [Roles::class, 'destroy'])->middleware('plan.feature:advanced_roles');
 
 
         Route::get('/settings/processes', [Processes::class, 'index'])->name('settings-processes');
@@ -240,13 +244,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/settings/process_jobs', [ScheduledJobs::class, 'index'])->name('settings-process_jobs');
         Route::get('/settings/activities', [ActivityLog::class, 'index'])->name('settings-activities');
 
-        Route::get('/settings/integrations-calendars', [CalendarsIntegration::class, 'index'])->name('settings-integrations-calendars');
-        Route::post('/settings/integrations-storecalendars', [CalendarsIntegration::class, 'store'])->name('settings-integrations-storecalendars');
-        Route::post('/settings/integrations-updatecalendars/{id}', [CalendarsIntegration::class, 'store'])->name('settings-integrations-updatecalendars');
+        Route::get('/settings/integrations-calendars', [CalendarsIntegration::class, 'index'])->middleware('plan.feature:integrations_calendars')->name('settings-integrations-calendars');
+        Route::post('/settings/integrations-storecalendars', [CalendarsIntegration::class, 'store'])->middleware('plan.feature:integrations_calendars')->name('settings-integrations-storecalendars');
+        Route::post('/settings/integrations-updatecalendars/{id}', [CalendarsIntegration::class, 'store'])->middleware('plan.feature:integrations_calendars')->name('settings-integrations-updatecalendars');
 
-        Route::get('/settings/integrations-meeting', [Meetings::class, 'index'])->name('settings-integrations-meeting');
-        Route::post('/settings/integrations-storemeeting', [Meetings::class, 'store'])->name('settings-integrations-storemeeting');
-        Route::post('/settings/integrations-updatemeeting/{id}', [Meetings::class, 'update'])->name('settings-integrations-updatemeeting');
+        Route::get('/settings/integrations-meeting', [Meetings::class, 'index'])->middleware('plan.feature:integrations_meetings')->name('settings-integrations-meeting');
+        Route::post('/settings/integrations-storemeeting', [Meetings::class, 'store'])->middleware('plan.feature:integrations_meetings')->name('settings-integrations-storemeeting');
+        Route::post('/settings/integrations-updatemeeting/{id}', [Meetings::class, 'update'])->middleware('plan.feature:integrations_meetings')->name('settings-integrations-updatemeeting');
+
+        Route::get('/settings/plans', [PlansController::class, 'index'])->name('settings-plans');
+        Route::post('/settings/plans', [PlansController::class, 'store'])->name('settings-plans.store');
+        Route::put('/settings/plans/{plan}', [PlansController::class, 'update'])->name('settings-plans.update');
+        Route::delete('/settings/plans/{plan}', [PlansController::class, 'destroy'])->name('settings-plans.destroy');
+        Route::post('/settings/plans/subscribe', [PlansController::class, 'subscribe'])->name('settings-plans.subscribe');
+        Route::post('/settings/plans/{subscription}/cancel', [PlansController::class, 'cancel'])->name('settings-plans.cancel');
+        Route::post('/settings/plans/{subscription}/resume', [PlansController::class, 'resume'])->name('settings-plans.resume');
 
         Route::get('/settings/form-fields', [FormFields::class, 'index'])->name('settings-form-fields');
         Route::post('/settings/storeform-fields', [FormFields::class, 'store'])->name('settings-storeform-fields');
