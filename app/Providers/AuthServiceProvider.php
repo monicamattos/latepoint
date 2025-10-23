@@ -2,7 +2,8 @@
 
 namespace App\Providers;
 
-// use Illuminate\Support\Facades\Gate;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -13,7 +14,8 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // 'App\Models\Model' => 'App\Policies\ModelPolicy',
+        \App\Models\Plan::class => \App\Policies\PlanPolicy::class,
+        \App\Models\PlanSubscription::class => \App\Policies\PlanSubscriptionPolicy::class,
     ];
 
     /**
@@ -22,6 +24,19 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
-        //
+
+        Gate::define('access-plan-feature', function ($user, string $feature) {
+            if (!$user instanceof User) {
+                return false;
+            }
+
+            $admin = $user->admin;
+
+            if (!$admin) {
+                return false;
+            }
+
+            return $admin->hasFeature($feature);
+        });
     }
 }

@@ -49,6 +49,18 @@ php artisan serve
 
 ```
 
+## Como enviar alterações pelo navegador
+
+Se preferir publicar suas alterações diretamente pelo GitHub usando apenas o navegador, siga os passos abaixo:
+
+1. Acesse o repositório no GitHub e clique no botão **Add file ▾** > **Upload files**.
+2. Arraste os arquivos modificados do seu computador para a área de upload ou escolha-os manualmente.
+3. Revise a lista de arquivos enviados, informe um título e descrição para o commit e confirme em **Commit changes**.
+4. Na página inicial do repositório, clique em **Compare & pull request** para abrir um PR com suas alterações.
+5. Adicione um resumo e envie o pull request para revisão.
+
+Assim você consegue publicar as mudanças sem precisar usar a linha de comando.
+
 <p>
 © 2024 LATE POINT
 

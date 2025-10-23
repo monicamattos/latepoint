@@ -141,6 +141,12 @@
           "slug": "pages-locations"
         },
         {
+          "url": "admin/settings/plans",
+          "name": "Plans",
+          "icon": "menu-icon tf-icons bx bx-credit-card",
+          "slug": "settings-plans"
+        },
+        {
           "url": "admin/settings/system",
           "name": "System",
           "icon": "menu-icon tf-icons bx bx-cog",
