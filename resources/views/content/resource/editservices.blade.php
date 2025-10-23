@@ -53,7 +53,8 @@ $configData = Helper::appClasses();
     <form action="{{route('admin.resource-updateservices', $service->id)}}" method="post" class="add-service">
         @csrf
         @php
-         $servicevalues = json_decode($service->short_description, true);
+         $servicevalues = json_decode($service->short_description, true) ?? [];
+         $customPricesByAgent = $customPricesByAgent ?? [];
         @endphp
         
         <div class="col-lg-12 col-xxl-12 mb-4 order-3 order-xxl-1">
@@ -241,17 +242,41 @@ $configData = Helper::appClasses();
                     <div class="card-body">
                         <div class="row">
                             @foreach ($agents as $agent)
-                            <div class="col-md-12 mb-md-0 mb-2">
-                                <div class="form-check custom-option custom-option-basic">
-                                    <label class="form-check-label custom-option-content" for="customCheckTemp37">
-                                    <input class="form-check-input" type="checkbox" name="service[offer][{{$agent->id}}]" id="customCheckTemp37" {{ isset($servicevalues['offer'][$agent->id]) && $servicevalues['offer'][$agent->id] == 'true' ? 'checked' : '' }} />
-                                        <span class="custom-option-header">
-                                            <img src="{{ $agent->avatar ? $agent->avatar : asset('assets/img/avatar.png') }}" class="w-px-30 border-50" />
-                                            <span class="h6 mb-0">{{$agent->first_name }} {{$agent->last_name}}</span>
-                                        </span>
-                                    </label>
+                                @php
+                                    $offerValue = $servicevalues['offer'][$agent->id] ?? false;
+                                    $offersService = is_bool($offerValue) ? $offerValue : in_array($offerValue, ['true', '1', 1], true);
+                                    $agentPrice = $customPricesByAgent[$agent->id] ?? null;
+
+                                    $formattedAgentPrice = null;
+
+                                    if ($agentPrice !== null) {
+                                        $formattedAgentPrice = rtrim(rtrim(number_format((float) $agentPrice, 4, '.', ''), '0'), '.');
+
+                                        if ($formattedAgentPrice === '') {
+                                            $formattedAgentPrice = '0';
+                                        }
+                                    }
+                                @endphp
+                                <div class="col-md-12 mb-md-0 mb-3">
+                                    <div class="row align-items-center gy-2">
+                                        <div class="col-lg-7">
+                                            <div class="form-check custom-option custom-option-basic">
+                                                <label class="form-check-label custom-option-content" for="agent_offer_{{ $agent->id }}">
+                                                    <input class="form-check-input agent-offer-toggle" data-agent-id="{{ $agent->id }}" type="checkbox" name="service[offer][{{ $agent->id }}]" id="agent_offer_{{ $agent->id }}" {{ $offersService ? 'checked' : '' }} />
+                                                    <span class="custom-option-header">
+                                                        <img src="{{ $agent->avatar ? $agent->avatar : asset('assets/img/avatar.png') }}" class="w-px-30 border-50" />
+                                                        <span class="h6 mb-0">{{ $agent->first_name }} {{ $agent->last_name }}</span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-5">
+                                            <label class="form-label mb-1" for="custom_price_{{ $agent->id }}">Custom Price</label>
+                                            <input type="number" min="0" step="0.01" class="form-control agent-custom-price" data-agent-price="{{ $agent->id }}" name="service[custom_price][{{ $agent->id }}]" id="custom_price_{{ $agent->id }}" value="{{ $formattedAgentPrice }}" placeholder="Leave blank to use service price" {{ $offersService ? '' : 'disabled' }} />
+                                            <small class="text-muted">Leave blank to inherit the service price.</small>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
                             @endforeach
                             
                            
@@ -745,6 +770,17 @@ $configData = Helper::appClasses();
     
     });
 
+    $(document).on('change', '.agent-offer-toggle', function() {
+        const agentId = $(this).data('agent-id');
+        const priceInput = $(`input[data-agent-price="${agentId}"]`);
+
+        if ($(this).is(':checked')) {
+            priceInput.prop('disabled', false);
+        } else {
+            priceInput.prop('disabled', true).val('');
+        }
+    });
+
     $('form.add-service').on('submit', function(e) {
         e.preventDefault();
         const csrf_token = $('meta[name="csrf-token"]').attr('content');
@@ -771,8 +807,14 @@ $configData = Helper::appClasses();
         const visibility = $('select[name="visibility"]').val();
         const override_default_booking_status = $('select[name="override_default_booking_status"]').val();
         servicedata['short_description'] =  $('input[name="short_description"]').val();
+        const customPrices = {};
         agents.forEach(element => {
             servicedata['offer'][element.id] = $(`input[name="service[offer][${element.id}]"]`).prop('checked');
+            const rawPrice = $(`input[name="service[custom_price][${element.id}]"]`).val();
+
+            if (rawPrice && rawPrice.trim() !== '') {
+                customPrices[element.id] = rawPrice.trim();
+            }
         });
         servicedata['schedule']['status'] = $('input[name="service[schedule][status]"]').prop('checked');
 
@@ -839,7 +881,8 @@ $configData = Helper::appClasses();
                 capacity_max: capacity_max ? capacity_max : null,
                 status: status,
                 visibility: visibility,
-                override_default_booking_status: override_default_booking_status ? override_default_booking_status : null
+                override_default_booking_status: override_default_booking_status ? override_default_booking_status : null,
+                custom_prices: JSON.stringify(customPrices)
             },
             success: function() {
                 console.log('success');

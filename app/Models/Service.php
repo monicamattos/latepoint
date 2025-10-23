@@ -34,4 +34,22 @@ class Service extends Model
         'override_default_booking_status',
     ];
 
+    public function customPrices()
+    {
+        return $this->hasMany(CustomPrice::class);
+    }
+
+    public function priceForAgent(?int $agentId, int $locationId = 0)
+    {
+        if (!$agentId) {
+            return $this->charge_amount;
+        }
+
+        $customPrice = $this->customPrices()
+            ->where('agent_id', $agentId)
+            ->where('location_id', $locationId)
+            ->first();
+
+        return $customPrice?->charge_amount ?? $this->charge_amount;
+    }
 }
