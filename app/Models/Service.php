@@ -52,4 +52,51 @@ class Service extends Model
 
         return $customPrice?->charge_amount ?? $this->charge_amount;
     }
+
+    public function configuration(): array
+    {
+        if (!$this->short_description) {
+            return [];
+        }
+
+        $decoded = json_decode($this->short_description, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public function offeredAgentIds(): array
+    {
+        $configuration = $this->configuration();
+
+        if (!isset($configuration['offer']) || !is_array($configuration['offer'])) {
+            return [];
+        }
+
+        $agentIds = [];
+
+        foreach ($configuration['offer'] as $agentId => $value) {
+            if ($this->isTruthy($value)) {
+                $agentIds[] = (int) $agentId;
+            }
+        }
+
+        return array_values(array_unique($agentIds));
+    }
+
+    protected function isTruthy($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        if (is_string($value)) {
+            return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
+        }
+
+        return false;
+    }
 }

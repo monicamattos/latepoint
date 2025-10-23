@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 
 use App\Http\Controllers\Language\LanguageController;
+use App\Http\Controllers\BookingController;
 
 
 use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController;
@@ -77,6 +78,8 @@ use Illuminate\Support\Facades\Auth;
 */
 
 Route::get('/', [Home::class, 'index'])->name('landing');
+
+Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
 
 Route::get('login', [CustomerLogin::class, 'login'])->name('login');
 Route::get('agentLogin', [agent_Login::class, 'login'])->name('agentLogin');
