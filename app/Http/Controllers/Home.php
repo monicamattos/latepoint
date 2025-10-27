@@ -183,7 +183,7 @@ class Home extends Controller
             'servicePayload' => $servicePayload,
             'agentsPayload' => $agentsPayload,
             'loginDestination' => $this->resolveLoginDestination(),
-            'loginLabel' => Auth::check() ? 'Ir para dashboard' : 'Login',
+            'loginLabel' => Auth::check() ? __('Go to dashboard') : __('Login'),
             'timezoneOptions' => \DateTimeZone::listIdentifiers(),
             'defaultTimezone' => $defaultTimezone,
         ]);

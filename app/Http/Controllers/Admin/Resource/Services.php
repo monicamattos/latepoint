@@ -51,6 +51,22 @@ class Services extends Controller
         }
 
         $response = collect($groupedServices)->map(function ($services, $categoryId) use ($categories) {
+            $categoryName = $categoryId == 0
+                ? __('Uncategorized')
+                : ($categories[$categoryId] ?? __('Unknown Category'));
+
+
+            if (empty($categoryIds)) {
+                $groupedServices[0][] = $service;
+                continue;
+            }
+
+            foreach ($categoryIds as $categoryId) {
+                $groupedServices[$categoryId][] = $service;
+            }
+        }
+
+        $response = collect($groupedServices)->map(function ($services, $categoryId) use ($categories) {
             $categoryName = $categoryId == 0 ? 'Uncategorized' : ($categories[$categoryId] ?? 'Unknown Category');
 
             $servicesData = collect($services)->map(function ($service) {
@@ -172,6 +188,15 @@ class Services extends Controller
         $activity->initiated_by = "admin";
         $activity->initiated_by_id = $request->user()['id'];
         $activity->save();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => __('Service created successfully.'),
+                'id' => $service->id,
+            ], 201);
+        }
+
+        return redirect('/admin/resource/services')->with('success', __('Service created successfully.'));
     }
 
     /**
@@ -295,7 +320,14 @@ class Services extends Controller
         $activity->initiated_by_id = $request->user()['id'];
         $activity->save();
 
-        return redirect('/admin/resource/services')->with('success', 'Category updated successfully.');
+        if ($request->ajax()) {
+            return response()->json([
+                'message' => __('Service updated successfully.'),
+                'id' => $service->id,
+            ]);
+        }
+
+        return redirect('/admin/resource/services')->with('success', __('Service updated successfully.'));
 
     }
 
@@ -340,7 +372,39 @@ class Services extends Controller
         $service->categories()->detach();
         $service->delete();
 
-        return redirect('/admin/resource/services')->with('success', 'Category updated successfully.');
+        return redirect('/admin/resource/services')->with('success', __('Service deleted successfully.'));
+    }
+
+    protected function resolveCategoryIds(Request $request): array
+    {
+        $raw = $request->input('category_ids', $request->input('category_id'));
+
+        if ($raw === null || $raw === '' || $raw === []) {
+            return [];
+        }
+
+        $categoryIds = is_array($raw) ? $raw : [$raw];
+
+        $categoryIds = array_filter(array_map(static function ($value) {
+            if ($value === null || $value === '' || $value === '0') {
+                return null;
+            }
+
+            return (int) $value;
+        }, $categoryIds));
+
+        return array_values(array_unique($categoryIds));
+    }
+
+    protected function primaryCategoryId(array $categoryIds): ?string
+    {
+        if (empty($categoryIds)) {
+            return null;
+        }
+
+        $first = reset($categoryIds);
+
+        return $first !== false ? (string) $first : null;
     }
 
     protected function resolveCategoryIds(Request $request): array
