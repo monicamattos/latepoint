@@ -88,8 +88,10 @@ class Categories extends Controller
      */
     public function destroy(string $id)
     {
-        $category = ServiceCategory::findOrFail($id);
-        Service::where('category_id', $id)->update(['category_id' => 0]);
+        $category = ServiceCategory::with('services')->findOrFail($id);
+
+        Service::where('category_id', $id)->update(['category_id' => null]);
+        $category->services()->detach();
         $category->delete();
 
         return redirect('/admin/resource/categories')->with('success', 'Category updated successfully.');

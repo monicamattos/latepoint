@@ -45,28 +45,47 @@
     }
 </style>
 <div class="row">
+    @php
+        $servicesByCategory = [];
+
+        foreach ($services as $service) {
+            $categoryCollection = $service->categories ?? collect();
+
+            if ($categoryCollection->isEmpty()) {
+                $servicesByCategory[0] = $servicesByCategory[0] ?? [];
+                $servicesByCategory[0][$service->id] = $service;
+                continue;
+            }
+
+            foreach ($categoryCollection as $category) {
+                $servicesByCategory[$category->id] = $servicesByCategory[$category->id] ?? [];
+                $servicesByCategory[$category->id][$service->id] = $service;
+            }
+        }
+
+        $uncategorizedServices = collect($servicesByCategory[0] ?? [])->values();
+    @endphp
     <div class="col-lg-12 col-xxl-12 mb-4 order-3 order-xxl-1">
         <div class="card-header mb-4 d-flex">
             <a href="{{ url('/admin/resource/services') }}" class="agent-status-active text-center service_title mx-2">
-                <h4 class="m-0 me-2">Services</h4>
+                <h4 class="m-0 me-2">{{ __('Services') }}</h4>
             </a>
             <a href="{{ url('/admin/resource/categories') }}" class="agent-status-active text-center mx-2">
-                <h4 class="m-0 me-2">Categories</h4>
+                <h4 class="m-0 me-2">{{ __('Categories') }}</h4>
             </a>
             <a href="{{ url('/admin/resource/serviceextras') }}" class="agent-status-active text-center mx-2">
-                <h4 class="m-0 me-2">Service Extras</h4>
+                <h4 class="m-0 me-2">{{ __('Servieces extras') }}</h4>
             </a>
             <hr>
         </div>
         <div class="">
             <div class="os-form-sub-header sub-level">
-                <h3>Uncategorized</h3>
+                <h3>{{ __('Uncategorized') }}</h3>
             </div>
             <div class="index-agent-boxes">
-                @foreach ($services as $serv)
-                @if($serv->category_id == '0')               
+                @foreach ($uncategorizedServices as $serv)
                     <a href="{{route('admin.resource-editservices', $serv->id) }}" class="agent-box-w agent-status-active text-center os-service {{ $serv->status === 'disabled' ? 'service-disabled-card' : '' }}">
-                    
+
                         <div class="agent-info-w {{ $serv->status === 'disabled' ? 'service-disabled' : '' }}">
                             <div class="agent-info mt-2">
                                 <div class="agent-name">{{$serv->name}}</div>
@@ -87,7 +106,7 @@
                          $extraAgentsCount = count($displayedAgents) - 2;
                         @endphp
                         <div class="os-service-agents">
-                           <div class="label">Agents:</div>
+                           <div class="label">{{ __('Agents:') }}</div>
     
                            <div class="agents-avatars">
                             @foreach(array_slice($displayedAgents, 0, 2) as $agentId)
@@ -105,56 +124,57 @@
                         </div>
                             <div class="os-service-info">
                                 <div class="service-info-row">
-                                    <div class="label">Duration:</div>
+                                    <div class="label">{{ __('Duration:') }}</div>
                                     <div class="value">
                                         <strong>{{$serv->duration}}</strong> min
                                     </div>
                                 </div>
                                 <div class="service-info-row">
-                                    <div class="label">Price:</div>
+                                    <div class="label">{{ __('Price:') }}</div>
                                     <div class="value">
                                       <strong>${{ number_format($serv->price_max, 2) }}</strong>
                                     </div>
                                 </div>
                                 <div class="service-info-row">
-                                    <div class="label">Buffer:</div>
+                                    <div class="label">{{ __('Buffer:') }}</div>
                                     <div class="value">
                                         <strong>{{$serv->buffer_before}}/{{$serv->buffer_after}}</strong> min
                                     </div>
                                 </div>
                                 <div class="service-info-row">
-                                    <div class="label">Capacity:</div>
+                                    <div class="label">{{ __('Capacity:') }}</div>
                                     <div class="value">
-                                        <strong>{{$serv->capacity_min}} - {{$serv->capacity_max}}</strong> person
+                                        <strong>{{$serv->capacity_min}} - {{$serv->capacity_max}}</strong> {{ __('people') }}
                                     </div>
                                 </div>
                            </div>
                         </div>
 
-                        <button type="button" class="btn btn-primary"><i class="fa fa-pencil"></i> Edit Service</button>
+                        <button type="button" class="btn btn-primary"><i class="fa fa-pencil"></i> {{ __('Edit Service') }}</button>
                     </a>
-                    @endif
                     @endforeach
                     <a class="create-service-link-w" href="{{url('/admin/resource/createservices')}}">
                         <div class="create-service-link-i">
                             <div class="add-service-graphic-w">
                                 <div class="add-service-plus"><i class="latepoint-icon latepoint-icon-plus4 fa fa-plus"></i></div>
                             </div>
-                            <div class="add-service-label">Add Service</div>
+                            <div class="add-service-label">{{ __('Add Service') }}</div>
                         </div>
                     </a>
                 </div>
 
         </div>
 
-        @foreach ($categories as $cat)  
+        @foreach ($categories as $cat)
+        @php
+            $categoryServices = collect($servicesByCategory[$cat->id] ?? [])->values();
+        @endphp
         <div class="">
             <div class="os-form-sub-header sub-level">
                 <h3>{{ $cat->name }}</h3>
             </div>
             <div class="index-agent-boxes">
-                @foreach ($services as $serv)     
-                 @if($serv->category_id == $cat->id)          
+                @foreach ($categoryServices as $serv)
                     <a href="{{route('admin.resource-editservices', $serv->id) }}" class="agent-box-w agent-status-active text-center os-service {{ $serv->status === 'disabled' ? 'service-disabled-card' : '' }}">
                         <div class="agent-info-w {{ $serv->status === 'disabled' ? 'service-disabled' : '' }}">
                             <div class="agent-info mt-2">
@@ -177,7 +197,7 @@
                          $extraAgentsCount = count($displayedAgents) - 2;
                         @endphp
                         <div class="os-service-agents">
-                           <div class="label">Agents:</div>
+                           <div class="label">{{ __('Agents:') }}</div>
     
                            <div class="agents-avatars">
                             @foreach(array_slice($displayedAgents, 0, 2) as $agentId)
@@ -195,42 +215,41 @@
                         </div>
                             <div class="os-service-info">
                                 <div class="service-info-row">
-                                    <div class="label">Duration:</div>
+                                    <div class="label">{{ __('Duration:') }}</div>
                                     <div class="value">
                                         <strong>{{$serv->duration}}</strong> min
                                     </div>
                                 </div>
                                 <div class="service-info-row">
-                                    <div class="label">Price:</div>
+                                    <div class="label">{{ __('Price:') }}</div>
                                     <div class="value">
-                                        <strong>${{ number_format($serv->price_max, 2) }}</strong>
+                                      <strong>${{ number_format($serv->price_max, 2) }}</strong>
                                     </div>
                                 </div>
                                 <div class="service-info-row">
-                                    <div class="label">Buffer:</div>
+                                    <div class="label">{{ __('Buffer:') }}</div>
                                     <div class="value">
                                         <strong>{{$serv->buffer_before}}/{{$serv->buffer_after}}</strong> min
                                     </div>
                                 </div>
                                 <div class="service-info-row">
-                                    <div class="label">Capacity:</div>
+                                    <div class="label">{{ __('Capacity:') }}</div>
                                     <div class="value">
-                                        <strong>{{$serv->capacity_min}} - {{$serv->capacity_max}}</strong> person
+                                        <strong>{{$serv->capacity_min}} - {{$serv->capacity_max}}</strong> {{ __('people') }}
                                     </div>
                                 </div>
                            </div>
                         </div>
 
-                        <button type="button" class="btn btn-primary"><i class="fa fa-pencil"></i> Edit Service</button>
+                        <button type="button" class="btn btn-primary"><i class="fa fa-pencil"></i> {{ __('Edit Service') }}</button>
                     </a>
-                    @endif
                 @endforeach
                 <a class="create-service-link-w" href="{{ url('/admin/resource/createservices?category_id=' . $cat->id) }}">
                     <div class="create-service-link-i">
                         <div class="add-service-graphic-w">
                             <div class="add-service-plus"><i class="latepoint-icon latepoint-icon-plus4 fa fa-plus"></i></div>
                         </div>
-                        <div class="add-service-label">Add Service</div>
+                        <div class="add-service-label">{{ __('Add Service') }}</div>
                     </div>
                 </a>
             </div>

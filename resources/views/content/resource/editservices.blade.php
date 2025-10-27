@@ -80,11 +80,16 @@ $configData = Helper::appClasses();
                             <div class="col-lg-6 px-3">
                                 <label for="selectpickerBasic" class="form-label">Category</label>
                                 <div class="d-flex">
-                                    <select id="selectpickerBasic" class="selectpicker w-100" name="category_id" data-style="btn-default">  
-                                           <option value="0" {{$service->category_id == 0 ? 'selected' : '' }}>Uncategorized</option>
+                                    @php
+                                        $selectedCategoryIds = $service->categories->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+                                        if (empty($selectedCategoryIds) && $service->category_id) {
+                                            $selectedCategoryIds[] = (int) $service->category_id;
+                                        }
+                                    @endphp
+                                    <select id="selectpickerBasic" class="selectpicker w-100" name="category_ids[]" data-style="btn-default" multiple data-actions-box="true" data-live-search="true" data-selected-text-format="count > 1" data-none-selected-text="Select categories">
                                         @foreach ($categories as $category )
-                                           <option value="{{$category->id}}" {{ $category->id == $service->category_id ? 'selected' : '' }}>{{$category->name}}</option>
-                                        @endforeach                                                     
+                                           <option value="{{$category->id}}" {{ in_array($category->id, $selectedCategoryIds, true) ? 'selected' : '' }}>{{$category->name}}</option>
+                                        @endforeach
                                     </select>
                                     <button class="btn btn-primary h-px-40" type="button" style="width:200px;"><i class="fa fa-plus"></i>Add Category</button>
                                 </div>
@@ -795,7 +800,7 @@ $configData = Helper::appClasses();
         const duration = $('input[name="duration"]').val();
         const buffer_before = $('input[name="buffer_before"]').val();
         const buffer_after = $('input[name="buffer_after"]').val();
-        const category_id = $('select[name="category_id"]').val();
+        const categoryIds = $('select[name="category_ids[]"]').val() || [];
         // const order_number = $('input[name="order_number"]').val();
         const selection_image_id = $('.selection_image>.dz-preview>.dz-details>.dz-thumbnail>img').attr('src');
         const description_image_id = $('.description_image>.dz-preview>.dz-details>.dz-thumbnail>img').attr('src');
@@ -871,7 +876,7 @@ $configData = Helper::appClasses();
                 duration: duration,
                 buffer_before: buffer_before ? buffer_before : null,
                 buffer_after: buffer_after ? buffer_after : null,
-                category_id: category_id ? category_id : null,
+                category_ids: categoryIds,
                 // order_number: order_number,
                 selection_image_id: selection_image_id ? selection_image_id : null,
                 description_image_id: description_image_id ? description_image_id : null,
