@@ -55,6 +55,20 @@ class Services extends Controller
                 ? __('Uncategorized')
                 : ($categories[$categoryId] ?? __('Unknown Category'));
 
+
+            if (empty($categoryIds)) {
+                $groupedServices[0][] = $service;
+                continue;
+            }
+
+            foreach ($categoryIds as $categoryId) {
+                $groupedServices[$categoryId][] = $service;
+            }
+        }
+
+        $response = collect($groupedServices)->map(function ($services, $categoryId) use ($categories) {
+            $categoryName = $categoryId == 0 ? 'Uncategorized' : ($categories[$categoryId] ?? 'Unknown Category');
+
             $servicesData = collect($services)->map(function ($service) {
                 return [
                     'id' => $service->id,
@@ -359,6 +373,38 @@ class Services extends Controller
         $service->delete();
 
         return redirect('/admin/resource/services')->with('success', __('Service deleted successfully.'));
+    }
+
+    protected function resolveCategoryIds(Request $request): array
+    {
+        $raw = $request->input('category_ids', $request->input('category_id'));
+
+        if ($raw === null || $raw === '' || $raw === []) {
+            return [];
+        }
+
+        $categoryIds = is_array($raw) ? $raw : [$raw];
+
+        $categoryIds = array_filter(array_map(static function ($value) {
+            if ($value === null || $value === '' || $value === '0') {
+                return null;
+            }
+
+            return (int) $value;
+        }, $categoryIds));
+
+        return array_values(array_unique($categoryIds));
+    }
+
+    protected function primaryCategoryId(array $categoryIds): ?string
+    {
+        if (empty($categoryIds)) {
+            return null;
+        }
+
+        $first = reset($categoryIds);
+
+        return $first !== false ? (string) $first : null;
     }
 
     protected function resolveCategoryIds(Request $request): array
