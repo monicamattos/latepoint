@@ -18,7 +18,7 @@ class Services extends Controller
      */
     public function index()
     {
-        $services = Service::all();
+        $services = Service::with('categories')->get();
 
         $categories = ServiceCategory::all();
 
@@ -28,21 +28,32 @@ class Services extends Controller
 
     public function get()
     {
-        $services = Service::all();
+        $services = Service::with('categories')->get();
 
-        // Fetch all categories to minimize database queries
         $categories = ServiceCategory::pluck('name', 'id');
 
-        // Group services by category_id
-        $groupedServices = $services->groupBy('category_id');
+        $groupedServices = [];
 
-        // Format the response
-        $response = $groupedServices->map(function ($services, $categoryId) use ($categories) {
-            // Determine the category name
+        foreach ($services as $service) {
+            $categoryIds = $service->categories
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (empty($categoryIds)) {
+                $groupedServices[0][] = $service;
+                continue;
+            }
+
+            foreach ($categoryIds as $categoryId) {
+                $groupedServices[$categoryId][] = $service;
+            }
+        }
+
+        $response = collect($groupedServices)->map(function ($services, $categoryId) use ($categories) {
             $categoryName = $categoryId == 0 ? 'Uncategorized' : ($categories[$categoryId] ?? 'Unknown Category');
 
-            // Map services data
-            $servicesData = $services->map(function ($service) {
+            $servicesData = collect($services)->map(function ($service) {
                 return [
                     'id' => $service->id,
                     'name' => $service->name,
@@ -51,12 +62,13 @@ class Services extends Controller
                     'buffer_after' => $service->buffer_after,
                     'capacity_min' => $service->capacity_min,
                     'capacity_max' => $service->capacity_max,
+                    'category_ids' => $service->categories->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
                 ];
             });
 
             return [
                 'category' => $categoryName,
-                'services' => $servicesData
+                'services' => $servicesData,
             ];
         })->values();
 
@@ -88,7 +100,9 @@ class Services extends Controller
             'duration' => 'required|string', // Required duration format
             'buffer_before' => 'string|nullable', // Validate time format if needed
             'buffer_after' => 'string|nullable', // Validate time format if needed
-            'category_id' => 'string|nullable', // Validate category ID existence
+            'category_id' => 'string|nullable', // Backwards compatibility
+            'category_ids' => 'array|nullable',
+            'category_ids.*' => 'integer|exists:service_categories,id',
             'bg_color' => 'string|nullable', // Validate hex color format (optional)
             'timeblock_interval' => 'string|nullable', // Validate time interval format
             'capacity_min' => 'nullable|numeric|min:0', // Non-negative integer
@@ -98,6 +112,8 @@ class Services extends Controller
             'override_default_booking_status' => 'string|nullable|max:255', // Adjust length if needed
 
         ]);
+
+        $categoryIds = $this->resolveCategoryIds($request);
 
         $service = new Service;
         $service->name = $validatedData['name'];
@@ -110,7 +126,7 @@ class Services extends Controller
         $service->duration = $validatedData['duration'];
         $service->buffer_before = $validatedData['buffer_before'];
         $service->buffer_after = $validatedData['buffer_after'];
-        $service->category_id = $validatedData['category_id'];
+        $service->category_id = $this->primaryCategoryId($categoryIds);
         $service->selection_image_id = $request->selection_image_id;
         $service->description_image_id = $request->description_image_id;
         $service->bg_color = $validatedData['bg_color'];
@@ -122,6 +138,8 @@ class Services extends Controller
         $service->override_default_booking_status = $validatedData['override_default_booking_status'];
 
         $service->save();
+
+        $service->categories()->sync($categoryIds);
 
         $this->syncCustomPrices($service, $request);
 
@@ -140,7 +158,8 @@ class Services extends Controller
                 'duration' => $validatedData['duration'],
                 'buffer_before' => $validatedData['buffer_before'],
                 'buffer_after' => $validatedData['buffer_after'],
-                'category_id' => $validatedData['category_id'],
+                'primary_category_id' => $service->category_id,
+                'category_ids' => $categoryIds,
                 'bg_color' => $validatedData['bg_color'],
                 'timeblock_interval' => $validatedData['timeblock_interval'],
                 'capacity_min' => $validatedData['capacity_min'],
@@ -168,7 +187,7 @@ class Services extends Controller
      */
     public function edit(string $id)
     {
-        $service = Service::with('customPrices')->findOrFail($id);
+        $service = Service::with(['customPrices', 'categories'])->findOrFail($id);
         $categories = ServiceCategory::all();
         $agents = Agent::all();
         $extras = ServiceExtra::all();
@@ -198,7 +217,9 @@ class Services extends Controller
             'duration' => 'required|string', // Required duration format
             'buffer_before' => 'string|nullable', // Validate time format if needed
             'buffer_after' => 'string|nullable', // Validate time format if needed
-            'category_id' => 'string|nullable', // Validate category ID existence
+            'category_id' => 'string|nullable',
+            'category_ids' => 'array|nullable',
+            'category_ids.*' => 'integer|exists:service_categories,id',
             'bg_color' => 'string|nullable', // Validate hex color format (optional)
             'timeblock_interval' => 'string|nullable', // Validate time interval format
             'capacity_min' => 'nullable|numeric|min:0', // Non-negative integer
@@ -208,7 +229,9 @@ class Services extends Controller
             'override_default_booking_status' => 'string|nullable|max:255', // Adjust length if needed
 
         ]);
-        $service = Service::findOrFail($request->id);
+        $service = Service::with('categories')->findOrFail($request->id);
+
+        $categoryIds = $this->resolveCategoryIds($request);
 
         $service->name = $validatedData['name'];
         $service->short_description = $request->short_description;
@@ -220,7 +243,7 @@ class Services extends Controller
         $service->duration = $validatedData['duration'];
         $service->buffer_before = $validatedData['buffer_before'];
         $service->buffer_after = $validatedData['buffer_after'];
-        $service->category_id = $validatedData['category_id'];
+        $service->category_id = $this->primaryCategoryId($categoryIds);
         $service->bg_color = $validatedData['bg_color'];
         $service->timeblock_interval = $validatedData['timeblock_interval'];
         $service->capacity_min = $validatedData['capacity_min'];
@@ -239,6 +262,8 @@ class Services extends Controller
 
         $service->save();
 
+        $service->categories()->sync($categoryIds);
+
         $this->syncCustomPrices($service, $request);
 
         $activity = new Activity();
@@ -255,7 +280,8 @@ class Services extends Controller
                 'duration' => $validatedData['duration'],
                 'buffer_before' => $validatedData['buffer_before'],
                 'buffer_after' => $validatedData['buffer_after'],
-                'category_id' => $validatedData['category_id'],
+                'primary_category_id' => $service->category_id,
+                'category_ids' => $categoryIds,
                 'bg_color' => $validatedData['bg_color'],
                 'timeblock_interval' => $validatedData['timeblock_interval'],
                 'capacity_min' => $validatedData['capacity_min'],
@@ -278,7 +304,7 @@ class Services extends Controller
      */
     public function destroy(string $id)
     {
-        $service = Service::findOrFail($id);
+        $service = Service::with('categories')->findOrFail($id);
 
         $activity = new Activity();
         $activity->service_id = $service->id;
@@ -295,7 +321,8 @@ class Services extends Controller
                 'duration' => $service->duration,
                 'buffer_before' => $service->buffer_before,
                 'buffer_after' => $service->buffer_after,
-                'category_id' => $service->category_id,
+                'primary_category_id' => $service->category_id,
+                'category_ids' => $service->categories->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
                 'bg_color' => $service->bg_color,
                 'timeblock_interval' => $service->timeblock_interval,
                 'capacity_min' => $service->capacity_min,
@@ -310,10 +337,42 @@ class Services extends Controller
         $activity->save();
 
         CustomPrice::where('service_id', $service->id)->delete();
-
+        $service->categories()->detach();
         $service->delete();
 
         return redirect('/admin/resource/services')->with('success', 'Category updated successfully.');
+    }
+
+    protected function resolveCategoryIds(Request $request): array
+    {
+        $raw = $request->input('category_ids', $request->input('category_id'));
+
+        if ($raw === null || $raw === '' || $raw === []) {
+            return [];
+        }
+
+        $categoryIds = is_array($raw) ? $raw : [$raw];
+
+        $categoryIds = array_filter(array_map(static function ($value) {
+            if ($value === null || $value === '' || $value === '0') {
+                return null;
+            }
+
+            return (int) $value;
+        }, $categoryIds));
+
+        return array_values(array_unique($categoryIds));
+    }
+
+    protected function primaryCategoryId(array $categoryIds): ?string
+    {
+        if (empty($categoryIds)) {
+            return null;
+        }
+
+        $first = reset($categoryIds);
+
+        return $first !== false ? (string) $first : null;
     }
 
     protected function syncCustomPrices(Service $service, Request $request): void

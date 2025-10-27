@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ServiceCategory extends Model
 {
@@ -15,4 +16,10 @@ class ServiceCategory extends Model
         'selection_image_id',
         'order_number',
     ];
+
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'category_service')
+            ->withTimestamps();
+    }
 }

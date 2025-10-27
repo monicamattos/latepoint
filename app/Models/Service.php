@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Service extends Model
 {
@@ -51,6 +52,12 @@ class Service extends Model
             ->first();
 
         return $customPrice?->charge_amount ?? $this->charge_amount;
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceCategory::class, 'category_service')
+            ->withTimestamps();
     }
 
     public function configuration(): array

@@ -45,6 +45,26 @@
     }
 </style>
 <div class="row">
+    @php
+        $servicesByCategory = [];
+
+        foreach ($services as $service) {
+            $categoryCollection = $service->categories ?? collect();
+
+            if ($categoryCollection->isEmpty()) {
+                $servicesByCategory[0] = $servicesByCategory[0] ?? [];
+                $servicesByCategory[0][$service->id] = $service;
+                continue;
+            }
+
+            foreach ($categoryCollection as $category) {
+                $servicesByCategory[$category->id] = $servicesByCategory[$category->id] ?? [];
+                $servicesByCategory[$category->id][$service->id] = $service;
+            }
+        }
+
+        $uncategorizedServices = collect($servicesByCategory[0] ?? [])->values();
+    @endphp
     <div class="col-lg-12 col-xxl-12 mb-4 order-3 order-xxl-1">
         <div class="card-header mb-4 d-flex">
             <a href="{{ url('/admin/resource/services') }}" class="agent-status-active text-center service_title mx-2">
@@ -63,10 +83,9 @@
                 <h3>Uncategorized</h3>
             </div>
             <div class="index-agent-boxes">
-                @foreach ($services as $serv)
-                @if($serv->category_id == '0')               
+                @foreach ($uncategorizedServices as $serv)
                     <a href="{{route('admin.resource-editservices', $serv->id) }}" class="agent-box-w agent-status-active text-center os-service {{ $serv->status === 'disabled' ? 'service-disabled-card' : '' }}">
-                    
+
                         <div class="agent-info-w {{ $serv->status === 'disabled' ? 'service-disabled' : '' }}">
                             <div class="agent-info mt-2">
                                 <div class="agent-name">{{$serv->name}}</div>
@@ -133,7 +152,6 @@
 
                         <button type="button" class="btn btn-primary"><i class="fa fa-pencil"></i> Edit Service</button>
                     </a>
-                    @endif
                     @endforeach
                     <a class="create-service-link-w" href="{{url('/admin/resource/createservices')}}">
                         <div class="create-service-link-i">
@@ -147,14 +165,16 @@
 
         </div>
 
-        @foreach ($categories as $cat)  
+        @foreach ($categories as $cat)
+        @php
+            $categoryServices = collect($servicesByCategory[$cat->id] ?? [])->values();
+        @endphp
         <div class="">
             <div class="os-form-sub-header sub-level">
                 <h3>{{ $cat->name }}</h3>
             </div>
             <div class="index-agent-boxes">
-                @foreach ($services as $serv)     
-                 @if($serv->category_id == $cat->id)          
+                @foreach ($categoryServices as $serv)
                     <a href="{{route('admin.resource-editservices', $serv->id) }}" class="agent-box-w agent-status-active text-center os-service {{ $serv->status === 'disabled' ? 'service-disabled-card' : '' }}">
                         <div class="agent-info-w {{ $serv->status === 'disabled' ? 'service-disabled' : '' }}">
                             <div class="agent-info mt-2">
@@ -223,7 +243,6 @@
 
                         <button type="button" class="btn btn-primary"><i class="fa fa-pencil"></i> Edit Service</button>
                     </a>
-                    @endif
                 @endforeach
                 <a class="create-service-link-w" href="{{ url('/admin/resource/createservices?category_id=' . $cat->id) }}">
                     <div class="create-service-link-i">
