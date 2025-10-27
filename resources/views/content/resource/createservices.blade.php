@@ -131,8 +131,7 @@ $configData = Helper::appClasses();
                             <div class="col-lg-6 px-3">
                                 <label for="selectpickerBasic" class="form-label">Category</label>
                                 <div class="d-flex">
-                                    <select id="selectpickerGroups-cat" class="selectpicker-cat selectpicker w-100" name="category_id" data-style="btn-default">
-                                       <!-- <option value="0" >Uncategorized</option>                     -->
+                                    <select id="selectpickerGroups-cat" class="selectpicker-cat selectpicker w-100" name="category_ids[]" data-style="btn-default" multiple data-actions-box="true" data-live-search="true" data-selected-text-format="count > 1" data-none-selected-text="Select categories">
                                     </select>
                                     <button class="btn btn-primary h-px-40" type="button" style="width:200px;"><i class="fa fa-plus"></i>Add Category</button>
                                 </div>
@@ -854,27 +853,22 @@ function populateExtraServ(extras) {
       // Function to populate services dropdown
       function populateCategories(categories) {
         const selectpickerCatGroups = document.getElementById('selectpickerGroups-cat');
-        selectpickerCatGroups.innerHTML = ''; // Clear existing options
-        categories.unshift({
-            id: 0,
-            name: 'Uncategorized'
-        })
+        selectpickerCatGroups.innerHTML = '';
 
         if (categories.length) {
-          categories.forEach((category, index) => {
+          categories.forEach((category) => {
             const option = document.createElement('option');
             option.value = category.id;
             option.textContent = category.name;
-            if (categoryId && categoryId == category.id) {
-            option.selected = true;
-        }
+            if (categoryId && Number(categoryId) === Number(category.id)) {
+              option.selected = true;
+            }
             selectpickerCatGroups.appendChild(option);
           });
-       }
+        }
 
-     // Refresh selectpicker to show new options (if using Bootstrap selectpicker)
-      $('.selectpicker-cat').selectpicker('refresh');
-    }
+        $('.selectpicker-cat').selectpicker('refresh');
+      }
 
     $(document).on('change', '.agent-offer-toggle', function() {
         const agentId = $(this).data('agent-id');
@@ -929,7 +923,7 @@ function populateExtraServ(extras) {
         const duration = $('input[name="duration"]').val();
         const buffer_before = $('input[name="buffer_before_service"]').val();
         const buffer_after = $('input[name="buffer_after_service"]').val();
-        const category_id = $('select[name="category_id"]').val();
+        const categoryIds = $('select[name="category_ids[]"]').val() || [];
         // const order_number = $('input[name="order_number"]').val();
         const selection_image_id = $('.selection_image>.dz-preview>.dz-details>.dz-thumbnail>img').attr('src');
         const description_image_id = $('.description_image>.dz-preview>.dz-details>.dz-thumbnail>img').attr('src');
@@ -1007,7 +1001,7 @@ function populateExtraServ(extras) {
                 duration: duration ? duration : 60,
                 buffer_before: buffer_before ? buffer_before : 0,
                 buffer_after: buffer_after ? buffer_after : 0,
-                category_id: category_id ? category_id : null,
+                category_ids: categoryIds,
                 // order_number: order_number,
                 selection_image_id: selection_image_id ? selection_image_id : null,
                 description_image_id: description_image_id ? description_image_id : null,

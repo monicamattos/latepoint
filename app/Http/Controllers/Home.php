@@ -69,9 +69,12 @@ class Home extends Controller
             ->keyBy('id');
 
         $services = Service::query()
-            ->with(['customPrices' => function ($query) {
-                $query->where('location_id', 0);
-            }])
+            ->with([
+                'customPrices' => function ($query) {
+                    $query->where('location_id', 0);
+                },
+                'categories:id,name',
+            ])
             ->orderByRaw('order_number IS NULL')
             ->orderBy('order_number')
             ->orderBy('name')
@@ -91,10 +94,17 @@ class Home extends Controller
             ->get();
 
         $servicePayload = $services->map(function (Service $service) {
+            $categoryIds = $service->categories
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->toArray();
+
             return [
                 'id' => $service->id,
                 'name' => $service->name,
-                'category_id' => $service->category_id ? (int) $service->category_id : 0,
+                'category_id' => $categoryIds[0] ?? ($service->category_id ? (int) $service->category_id : 0),
+                'category_ids' => $categoryIds,
                 'duration_minutes' => $this->convertToMinutes($service->duration),
                 'buffer_before_minutes' => $this->convertToMinutes($service->buffer_before),
                 'buffer_after_minutes' => $this->convertToMinutes($service->buffer_after),
@@ -120,9 +130,28 @@ class Home extends Controller
             ];
         })->values()->toArray();
 
-        $servicesByCategory = $services->groupBy(function (Service $service) {
-            return $service->category_id ? (int) $service->category_id : 0;
-        });
+        $servicesByCategory = [];
+
+        foreach ($services as $service) {
+            $categoryIds = $service->categories
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (empty($categoryIds)) {
+                $servicesByCategory[0][] = $service;
+                continue;
+            }
+
+            foreach ($categoryIds as $categoryId) {
+                $servicesByCategory[$categoryId][] = $service;
+            }
+        }
+
+        $servicesByCategory = collect($servicesByCategory)
+            ->map(function ($services) {
+                return collect($services)->unique('id')->values();
+            });
 
         $locationsByCategory = $locations->groupBy(function (Location $location) {
             return $location->category_id ? (int) $location->category_id : 0;
